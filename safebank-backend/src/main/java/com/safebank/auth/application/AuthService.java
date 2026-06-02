@@ -1,5 +1,6 @@
 package com.safebank.auth.application;
 
+import com.safebank.account.application.AccountService;
 import com.safebank.auth.application.dto.AuthResponse;
 import com.safebank.auth.application.dto.LoginRequest;
 import com.safebank.auth.application.dto.RegisterRequest;
@@ -19,15 +20,14 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final AccountService accountService;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        // validamos si el email ya se encuentra registrado en el sistema
         if (userRepository.existsByEmail(request.email())) {
             throw new RuntimeException("el correo electrónico ya está registrado");
         }
 
-        // creamos la entidad encriptando la contraseña antes de persistir
         User user = User.builder()
                 .firstName(request.firstName())
                 .lastName(request.lastName())
@@ -36,27 +36,25 @@ public class AuthService {
                 .role(Role.ROLE_USER)
                 .build();
 
-        userRepository.save(user);
+        // spring data jpa actualiza el objeto 'user' insertando el id autogenerado
+        user = userRepository.save(user);
 
-        // generamos el token de acceso para el usuario recién creado
+        // ¡MAGIA! creamos la cuenta bancaria asociada a ese nuevo ID
+        accountService.createAccountForUser(user.getId());
+
         String token = jwtService.generateToken(user);
-
         return new AuthResponse(token, "usuario registrado con éxito");
     }
 
     public AuthResponse login(LoginRequest request) {
-        // buscamos al usuario por email y lanzamos excepción si no existe
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new RuntimeException("credenciales incorrectas"));
 
-        // verificamos si la contraseña coincide con el hash guardado en base de datos
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new RuntimeException("credenciales incorrectas");
         }
 
-        // generamos el token si la autenticación es correcta
         String token = jwtService.generateToken(user);
-
         return new AuthResponse(token, "inicio de sesión correcto");
     }
 }
