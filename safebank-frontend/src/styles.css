@@ -1,1 +1,10 @@
-/* You can add global styles to this file, and also import other style files */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* configuramos el fondo por defecto para toda la app (soporte claro y oscuro) */
+@layer base {
+  body {
+    @apply bg-surface-light dark:bg-surface-dark text-gray-900 dark:text-gray-100 antialiased;
+  }
+}
