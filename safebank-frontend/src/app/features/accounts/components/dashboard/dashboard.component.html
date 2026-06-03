@@ -1,5 +1,5 @@
 <div
-  class="min-h-screen bg-gray-50 dark:bg-gray-900 p-6 text-gray-900 dark:text-gray-100"
+  class="min-h-screen bg-gray-50 dark:bg-gray-900 p-6 text-gray-900 dark:text-gray-100 transition-colors"
 >
   <header
     class="max-w-6xl mx-auto flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-4 mb-8"
@@ -13,7 +13,6 @@
         >Banca Local</span
       >
     </div>
-
     <button
       (click)="logout()"
       class="text-sm bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 font-medium px-4 py-2 rounded-md transition-colors"
@@ -22,31 +21,30 @@
     </button>
   </header>
 
-  <main class="max-w-6xl mx-auto">
-    @if (isLoading()) {
-      <div class="animate-pulse space-y-4 max-w-md">
-        <div class="h-6 bg-gray-300 dark:bg-gray-700 rounded w-1/3"></div>
-        <div class="h-32 bg-gray-300 dark:bg-gray-700 rounded-lg"></div>
+  <main class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
+    <div class="md:col-span-1 space-y-6">
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight">Mis Cuentas</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+          Resumen global de tus activos financieros.
+        </p>
       </div>
-    } @else {
-      @if (accountData(); as account) {
-        <div class="space-y-6">
-          <div>
-            <h1 class="text-2xl font-bold tracking-tight">Mis Cuentas</h1>
-            <p class="text-sm text-gray-500 dark:text-gray-400">
-              Resumen global de tus activos financieros actuales.
-            </p>
-          </div>
 
+      @if (isLoading()) {
+        <div
+          class="animate-pulse h-48 bg-gray-300 dark:bg-gray-700 rounded-xl w-full"
+        ></div>
+      } @else {
+        @if (accountData(); as account) {
           <div
-            class="max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 border border-gray-100 dark:border-gray-700"
+            class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 border border-gray-100 dark:border-gray-700 relative overflow-hidden"
           >
             <div class="flex justify-between items-start mb-4">
               <div>
                 <p
                   class="text-xs font-semibold uppercase tracking-wider text-gray-400"
                 >
-                  Cuenta Corriente Estándar
+                  Cuenta Corriente
                 </p>
                 <p
                   class="text-sm font-mono mt-1 text-gray-700 dark:text-gray-300"
@@ -60,7 +58,7 @@
               >
             </div>
 
-            <div class="mt-8">
+            <div class="mt-6 mb-6">
               <p
                 class="text-xs text-gray-400 uppercase tracking-wider font-semibold"
               >
@@ -72,9 +70,92 @@
                 {{ account.balance | currency: "EUR" : "symbol" : "1.2-2" }}
               </p>
             </div>
+
+            <button
+              routerLink="/transfer"
+              class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none transition-colors"
+            >
+              Hacer Transferencia
+            </button>
           </div>
-        </div>
+        }
       }
-    }
+    </div>
+
+    <div class="md:col-span-2 space-y-6">
+      <div>
+        <h2 class="text-xl font-bold tracking-tight">Últimos Movimientos</h2>
+      </div>
+
+      <div
+        class="bg-white dark:bg-gray-800 shadow-md rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700"
+      >
+        @if (isLoadingTransactions()) {
+          <div class="p-6 animate-pulse space-y-4">
+            <div class="h-4 bg-gray-300 dark:bg-gray-700 rounded w-1/4"></div>
+            <div class="h-4 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
+          </div>
+        } @else {
+          <ul class="divide-y divide-gray-200 dark:divide-gray-700">
+            @for (tx of transactionsData(); track tx.id) {
+              <li
+                class="p-4 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors flex justify-between items-center"
+              >
+                <div>
+                  <p
+                    class="text-sm font-semibold text-gray-900 dark:text-white"
+                  >
+                    {{ tx.concept }}
+                  </p>
+
+                  <p
+                    class="text-xs font-mono text-gray-500 dark:text-gray-400 mt-1"
+                  >
+                    {{ tx.isIncoming ? "De:" : "Para:" }} {{ tx.otherIban }}
+                  </p>
+
+                  <p class="text-xs text-gray-400 mt-1">
+                    {{ tx.transactionDate | date: "dd MMM yyyy, HH:mm" }}
+                  </p>
+                </div>
+
+                <span
+                  class="text-base font-bold"
+                  [ngClass]="
+                    tx.isIncoming
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : 'text-red-600 dark:text-red-400'
+                  "
+                >
+                  {{ tx.isIncoming ? "+" : "-"
+                  }}{{ tx.amount | currency: "EUR" : "symbol" : "1.2-2" }}
+                </span>
+              </li>
+            } @empty {
+              <li
+                class="p-12 text-center text-gray-500 dark:text-gray-400 flex flex-col items-center"
+              >
+                <svg
+                  class="w-16 h-16 mb-4 text-gray-300 dark:text-gray-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                  ></path>
+                </svg>
+                <p class="text-sm font-medium">
+                  Aún no hay movimientos en esta cuenta.
+                </p>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    </div>
   </main>
 </div>

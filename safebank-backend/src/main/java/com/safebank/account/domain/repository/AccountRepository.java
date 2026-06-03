@@ -12,4 +12,7 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
     
     // útil para comprobar que no generamos un iban duplicado por accidente
     boolean existsByIban(String iban);
+
+    // buscamos la cuenta de destino a través del iban
+    Optional<Account> findByIban(String iban);
 }

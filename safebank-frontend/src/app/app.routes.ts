@@ -23,4 +23,11 @@ export const routes: Routes = [
         (m) => m.DashboardComponent,
       ),
   },
+  {
+    path: 'transfer',
+    loadComponent: () =>
+      import('./features/transactions/components/transfer-form/transfer-form.component').then(
+        (m) => m.TransferFormComponent,
+      ),
+  },
 ];
