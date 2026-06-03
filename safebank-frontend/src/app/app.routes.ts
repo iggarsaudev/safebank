@@ -1,10 +1,7 @@
 import { Routes } from '@angular/router';
 
 export const routes: Routes = [
-  // redirección por defecto al login
   { path: '', redirectTo: 'login', pathMatch: 'full' },
-
-  // aplicamos lazy loading (carga perezosa) para optimizar el rendimiento
   {
     path: 'login',
     loadComponent: () =>
@@ -17,6 +14,13 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/auth/components/register/register.component').then(
         (m) => m.RegisterComponent,
+      ),
+  },
+  {
+    path: 'dashboard',
+    loadComponent: () =>
+      import('./features/accounts/components/dashboard/dashboard.component').then(
+        (m) => m.DashboardComponent,
       ),
   },
 ];
