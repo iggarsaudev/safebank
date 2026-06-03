@@ -32,7 +32,7 @@ export class LoginComponent {
       next: (response) => {
         this.authService.saveToken(response.token);
         this.toastService.show('inicio de sesión correcto', 'success');
-        // en la fase 3 redirigiremos al dashboard, por ahora lo dejamos aquí
+        this.router.navigate(['/dashboard']);
       },
       error: (error) => {
         console.error('error en la autenticación', error);
