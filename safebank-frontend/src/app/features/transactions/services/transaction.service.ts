@@ -32,4 +32,14 @@ export class TransactionService {
       responseType: 'blob', // CRUCIAL: Le dice a Angular que viene un archivo binario
     });
   }
+
+  getMyScheduledTransfers(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.API_URL}/scheduled`);
+  }
+
+  cancelScheduledTransfer(id: number): Observable<{ message: string }> {
+    return this.http.delete<{ message: string }>(
+      `${this.API_URL}/scheduled/${id}`,
+    );
+  }
 }

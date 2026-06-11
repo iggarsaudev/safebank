@@ -2,6 +2,7 @@ export interface TransactionRequest {
   targetIban: string;
   amount: number;
   concept?: string;
+  frequency?: 'IMMEDIATE' | 'MONTHLY';
 }
 
 export interface Transaction {

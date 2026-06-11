@@ -72,4 +72,17 @@ public class TransactionController {
 
         return ResponseEntity.ok().headers(headers).body(pdfBytes);
     }
+
+    @GetMapping("/scheduled")
+    public ResponseEntity<List<com.safebank.transaction.domain.ScheduledTransfer>> getMyScheduledTransfers(Authentication authentication) {
+        User user = userRepository.findByEmail(authentication.getName()).orElseThrow();
+        return ResponseEntity.ok(transactionService.getMyScheduledTransfers(user.getId()));
+    }
+
+    @DeleteMapping("/scheduled/{id}")
+    public ResponseEntity<Map<String, String>> cancelScheduledTransfer(@PathVariable Long id, Authentication authentication) {
+        User user = userRepository.findByEmail(authentication.getName()).orElseThrow();
+        transactionService.cancelScheduledTransfer(user.getId(), id);
+        return ResponseEntity.ok(Map.of("message", "Pago programado cancelado correctamente"));
+    }
 }

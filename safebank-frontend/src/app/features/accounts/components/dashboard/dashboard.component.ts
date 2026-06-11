@@ -6,6 +6,7 @@ import { AccountResponse } from '../../models/account.models';
 import { AuthService } from '../../../auth/services/auth.service';
 import { TransactionService } from '../../../transactions/services/transaction.service';
 import { Transaction } from '../../../transactions/models/transaction.models';
+import { ToastService } from '../../../../core/services/toast.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -18,6 +19,7 @@ export class DashboardComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly transactionService = inject(TransactionService);
   private readonly router = inject(Router);
+  private readonly toastService = inject(ToastService);
 
   accountData = signal<AccountResponse | null>(null);
   isLoading = signal<boolean>(true);
@@ -25,16 +27,19 @@ export class DashboardComponent implements OnInit {
   transactionsData = signal<Transaction[]>([]);
   isLoadingTransactions = signal<boolean>(true);
 
-  // Señales para la paginación
+  // SEÑAL PARA PAGOS PROGRAMADOS
+  scheduledTransfers = signal<any[]>([]);
+
   currentPage = signal<number>(0);
   totalPages = signal<number>(1);
   isFirstPage = signal<boolean>(true);
   isLastPage = signal<boolean>(true);
+  transferToDelete = signal<number | null>(null);
 
   ngOnInit(): void {
     this.loadAccount();
-    // Cargamos la primera página (la 0) al iniciar
     this.loadTransactions(0);
+    this.loadScheduledTransfers();
   }
 
   private loadAccount(): void {
@@ -43,73 +48,91 @@ export class DashboardComponent implements OnInit {
         this.accountData.set(data);
         this.isLoading.set(false);
       },
-      error: (error) => {
-        console.error('error al recuperar la cuenta bancaria', error);
+      error: () => {
         this.isLoading.set(false);
         this.logout();
       },
     });
   }
 
-  // Ahora recibe qué página queremos cargar
   loadTransactions(pageIndex: number): void {
     this.isLoadingTransactions.set(true);
     this.transactionService.getMyTransactions(pageIndex).subscribe({
       next: (data) => {
-        // Extraemos el array real de la propiedad 'content'
         this.transactionsData.set(data.content);
-
-        // Actualizamos las señales de paginación
         this.currentPage.set(data.number);
         this.totalPages.set(data.totalPages);
         this.isFirstPage.set(data.first);
         this.isLastPage.set(data.last);
-
         this.isLoadingTransactions.set(false);
       },
-      error: (error) => {
-        console.error('error al recuperar transacciones', error);
-        this.isLoadingTransactions.set(false);
+      error: () => this.isLoadingTransactions.set(false),
+    });
+  }
+
+  // Carga las transferencias automáticas
+  loadScheduledTransfers(): void {
+    this.transactionService.getMyScheduledTransfers().subscribe({
+      next: (data) => this.scheduledTransfers.set(data),
+      error: (err) => console.error('Error cargando programadas', err),
+    });
+  }
+
+  // Abre el modal guardando el ID
+  confirmCancel(id: number): void {
+    this.transferToDelete.set(id);
+  }
+
+  // Cierra el modal sin hacer nada
+  abortCancel(): void {
+    this.transferToDelete.set(null);
+  }
+
+  // Ejecuta el borrado real llamando al backend
+  executeCancel(id: number): void {
+    this.transactionService.cancelScheduledTransfer(id).subscribe({
+      next: (res) => {
+        this.toastService.show(
+          res.message || 'Pago cancelado correctamente',
+          'success',
+        );
+        this.transferToDelete.set(null); // Cerramos el modal
+        this.loadScheduledTransfers(); // Recargamos la lista
+      },
+      error: (err) => {
+        const errorMessage = err.error?.message || 'Error al cancelar el pago';
+        this.toastService.show(errorMessage, 'error');
+        this.transferToDelete.set(null);
       },
     });
   }
 
-  // Función para navegar entre páginas
   changePage(newPageIndex: number): void {
     if (newPageIndex >= 0 && newPageIndex < this.totalPages()) {
       this.loadTransactions(newPageIndex);
     }
   }
 
-  // Función para salir
-  logout(): void {
-    this.authService.logout();
-    this.router.navigate(['/login']);
-  }
-
-  // Función para descargar pdf
   downloadReceipt(transactionId: number): void {
     this.transactionService.downloadReceipt(transactionId).subscribe({
       next: (blob) => {
-        // 1. Creamos una URL segura local en el navegador apuntando al archivo PDF
         const url = window.URL.createObjectURL(blob);
-
-        // 2. Creamos un elemento <a> fantasma en el DOM
         const a = document.createElement('a');
         a.href = url;
-        a.download = `justificante-transferencia-${transactionId}.pdf`; // Nombre del archivo
-
-        // 3. Añadimos el elemento, lo pulsamos y lo destruimos
+        a.download = `justificante-transferencia-${transactionId}.pdf`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-
-        // 4. Liberamos la memoria del navegador
         window.URL.revokeObjectURL(url);
       },
       error: (error) => {
         console.error('Error al descargar el justificante', error);
       },
     });
+  }
+
+  logout(): void {
+    this.authService.logout();
+    this.router.navigate(['/login']);
   }
 }

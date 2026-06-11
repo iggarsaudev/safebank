@@ -12,6 +12,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import com.safebank.transaction.domain.ScheduledTransfer;
+import com.safebank.transaction.domain.TransferFrequency;
+import com.safebank.transaction.domain.repository.ScheduledTransferRepository;
+import java.time.LocalDate;
 
 import java.util.List;
 
@@ -21,40 +25,50 @@ public class TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final AccountRepository accountRepository;
+    private final ScheduledTransferRepository scheduledTransferRepository;
 
     /**
-     * Realiza una transferencia bancaria inmutable y segura entre dos cuentas del sistema.
-     * La anotación @Transactional garantiza la atomicidad (propiedades ACID): o se completa todo o se hace rollback.
+     * Realiza una transferencia inmediata o programa una transferencia periódica.
      */
     @Transactional
     public void makeTransfer(Long sourceUserId, TransactionRequest request) {
-        // 1. Localizamos la cuenta del usuario que está intentando hacer la transferencia
         Account sourceAccount = accountRepository.findByUserId(sourceUserId)
                 .orElseThrow(() -> new RuntimeException("Cuenta origen no encontrada"));
 
-        // 2. Validación de seguridad: no puedes enviarte dinero a ti mismo
         if (sourceAccount.getIban().equals(request.targetIban())) {
             throw new RuntimeException("No puedes enviarte dinero a tu propia cuenta");
         }
 
-        // 3. Validación financiera: comprobamos que tenga saldo suficiente
+        // Si la frecuencia es MONTHLY, guardamos la orden en vez de mover el dinero ya
+        if (request.frequency() == TransferFrequency.MONTHLY) {
+            ScheduledTransfer scheduledTransfer = ScheduledTransfer.builder()
+                    .sourceUserId(sourceUserId)
+                    .targetIban(request.targetIban())
+                    .amount(request.amount())
+                    .concept(request.concept() != null && !request.concept().isBlank() ? request.concept() : "Transferencia Mensual Programada")
+                    .frequency(TransferFrequency.MONTHLY)
+                    .nextExecutionDate(LocalDate.now()) // Se ejecuta por primera vez ¡hoy mismo!
+                    .active(true)
+                    .build();
+
+            scheduledTransferRepository.save(scheduledTransfer);
+            return; // Fin del flujo para las programadas
+        }
+
+        // --- FLUJO INMEDIATO ESTÁNDAR (El que ya teníamos) ---
         if (sourceAccount.getBalance().compareTo(request.amount()) < 0) {
             throw new RuntimeException("Saldo insuficiente para realizar la transferencia");
         }
 
-        // 4. Localizamos la cuenta destino (si no existe, la transacción se aborta por completo)
         Account targetAccount = accountRepository.findByIban(request.targetIban())
                 .orElseThrow(() -> new RuntimeException("El IBAN de destino no existe en nuestro sistema"));
 
-        // 5. Realizamos la operación matemática (restamos al origen y sumamos al destino)
         sourceAccount.setBalance(sourceAccount.getBalance().subtract(request.amount()));
         targetAccount.setBalance(targetAccount.getBalance().add(request.amount()));
 
-        // Persistimos los nuevos saldos actualizados en la base de datos
         accountRepository.save(sourceAccount);
         accountRepository.save(targetAccount);
 
-        // 6. Generamos y guardamos el registro inmutable de la transferencia en el histórico
         Transaction transaction = Transaction.builder()
                 .sourceAccountId(sourceAccount.getId())
                 .targetIban(request.targetIban())
@@ -63,6 +77,41 @@ public class TransactionService {
                 .build();
 
         transactionRepository.save(transaction);
+    }
+
+    /**
+     * LÓGICA DEL MOTOR AUTOMÁTICO: Ejecuta una transferencia programada individual
+     */
+    @Transactional
+    public void executeScheduledTransfer(ScheduledTransfer st) {
+        Account sourceAccount = accountRepository.findByUserId(st.getSourceUserId()).orElse(null);
+        Account targetAccount = accountRepository.findByIban(st.getTargetIban()).orElse(null);
+
+        // Si alguna cuenta no existe o no hay saldo, cancelamos esta ejecución pero mantenemos la orden activa para reintentar
+        if (sourceAccount == null || targetAccount == null || sourceAccount.getBalance().compareTo(st.getAmount()) < 0) {
+            System.err.println("Error procesando pago automático #" + st.getId() + ": saldo insuficiente o cuenta inválida.");
+            return;
+        }
+
+        // Ejecutamos el movimiento financiero
+        sourceAccount.setBalance(sourceAccount.getBalance().subtract(st.getAmount()));
+        targetAccount.setBalance(targetAccount.getBalance().add(st.getAmount()));
+        accountRepository.save(sourceAccount);
+        accountRepository.save(targetAccount);
+
+        // Registramos el movimiento inmutable en el historial real
+        Transaction transaction = Transaction.builder()
+                .sourceAccountId(sourceAccount.getId())
+                .targetIban(st.getTargetIban())
+                .amount(st.getAmount())
+                .concept("[Automático] " + st.getConcept())
+                .build();
+        transactionRepository.save(transaction);
+
+        // Actualizamos la orden programada para el MES que viene (+1 mes)
+        st.setNextExecutionDate(st.getNextExecutionDate().plusMonths(1));
+        scheduledTransferRepository.save(st);
+        System.out.println("Pago recurrente #" + st.getId() + " ejecutado con éxito. Próxima fecha: " + st.getNextExecutionDate());
     }
 
     /**
@@ -128,5 +177,30 @@ public class TransactionService {
                 : tx.getTargetIban();
 
         return new TransactionHistoryResponse(tx.getId(), tx.getConcept(), tx.getAmount(), tx.getTransactionDate(), isIncoming, otherIban);
+    }
+
+    /**
+     * Devuelve las transferencias programadas activas de un usuario.
+     */
+    @Transactional(readOnly = true)
+    public List<ScheduledTransfer> getMyScheduledTransfers(Long userId) {
+        return scheduledTransferRepository.findBySourceUserIdAndActiveTrue(userId);
+    }
+
+    /**
+     * Cancela y elimina una transferencia programada asegurando que pertenezca al usuario.
+     */
+    @Transactional
+    public void cancelScheduledTransfer(Long userId, Long scheduledTransferId) {
+        ScheduledTransfer st = scheduledTransferRepository.findById(scheduledTransferId)
+                .orElseThrow(() -> new RuntimeException("Pago programado no encontrado"));
+
+        // ¡SEGURIDAD! Verificamos que la orden pertenezca al usuario que la quiere borrar
+        if (!st.getSourceUserId().equals(userId)) {
+            throw new RuntimeException("No tienes permiso para cancelar esta operación");
+        }
+
+        // Lo eliminamos físicamente de la base de datos
+        scheduledTransferRepository.delete(st);
     }
 }

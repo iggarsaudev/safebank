@@ -28,6 +28,7 @@ export class TransferFormComponent implements OnInit {
     targetIban: ['', [Validators.required, Validators.minLength(15)]],
     amount: ['', [Validators.required, Validators.min(0.01)]],
     concept: [''],
+    frequency: ['IMMEDIATE'], // Controlamos si es inmediata o mensual
   });
 
   isSubmitting = false;
