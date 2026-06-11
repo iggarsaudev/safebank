@@ -30,4 +30,11 @@ export const routes: Routes = [
         (m) => m.TransferFormComponent,
       ),
   },
+  {
+    path: 'agenda',
+    loadComponent: () =>
+      import('./features/beneficiaries/components/agenda/agenda.component').then(
+        (m) => m.AgendaComponent,
+      ),
+  },
 ];

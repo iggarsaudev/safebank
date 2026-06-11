@@ -1,0 +1,138 @@
+<div
+  class="min-h-screen bg-gray-50 dark:bg-gray-900 p-6 text-gray-900 dark:text-gray-100 transition-colors"
+>
+  <header
+    class="max-w-6xl mx-auto flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-4 mb-8"
+  >
+    <div class="flex items-center space-x-2">
+      <span class="text-2xl font-bold text-indigo-600 dark:text-indigo-400"
+        >SafeBank</span
+      >
+      <span
+        class="text-xs bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300 font-semibold px-2.5 py-0.5 rounded"
+        >Agenda</span
+      >
+    </div>
+    <button
+      routerLink="/dashboard"
+      class="text-sm bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 font-medium px-4 py-2 rounded-md transition-colors"
+    >
+      Volver al Dashboard
+    </button>
+  </header>
+
+  <main class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
+    <div class="md:col-span-1 space-y-6">
+      <div>
+        <h2 class="text-xl font-bold tracking-tight">Nuevo Contacto</h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+          Guarda un IBAN para futuras transferencias.
+        </p>
+      </div>
+
+      <div
+        class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 border border-gray-100 dark:border-gray-700"
+      >
+        <form
+          [formGroup]="contactForm"
+          (ngSubmit)="onSubmit()"
+          class="space-y-4"
+        >
+          <div>
+            <label
+              class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              >Nombre / Alias</label
+            >
+            <input
+              type="text"
+              formControlName="name"
+              placeholder="Ej. Propietario Piso"
+              class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 transition-colors"
+            />
+          </div>
+          <div>
+            <label
+              class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              >IBAN</label
+            >
+            <input
+              type="text"
+              formControlName="iban"
+              placeholder="ES00..."
+              class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 uppercase transition-colors"
+            />
+          </div>
+          <button
+            type="submit"
+            [disabled]="contactForm.invalid || isSubmitting()"
+            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none disabled:opacity-50 transition-colors"
+          >
+            {{ isSubmitting() ? "Guardando..." : "Guardar Contacto" }}
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="md:col-span-2 space-y-6">
+      <div>
+        <h2 class="text-xl font-bold tracking-tight">Mis Beneficiarios</h2>
+      </div>
+
+      <div
+        class="bg-white dark:bg-gray-800 shadow-md rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700"
+      >
+        @if (isLoading()) {
+          <div class="p-6 animate-pulse space-y-4">
+            <div class="h-10 bg-gray-300 dark:bg-gray-700 rounded w-full"></div>
+            <div class="h-10 bg-gray-300 dark:bg-gray-700 rounded w-full"></div>
+          </div>
+        } @else {
+          <ul class="divide-y divide-gray-200 dark:divide-gray-700">
+            @for (contact of beneficiaries(); track contact.id) {
+              <li
+                class="p-4 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors flex justify-between items-center"
+              >
+                <div>
+                  <p
+                    class="text-sm font-semibold text-gray-900 dark:text-white"
+                  >
+                    {{ contact.name }}
+                  </p>
+                  <p
+                    class="text-xs font-mono text-gray-500 dark:text-gray-400 mt-1"
+                  >
+                    {{ contact.iban }}
+                  </p>
+                </div>
+                <div
+                  class="h-8 w-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold"
+                >
+                  {{ contact.name.charAt(0).toUpperCase() }}
+                </div>
+              </li>
+            } @empty {
+              <li
+                class="p-12 text-center text-gray-500 flex flex-col items-center"
+              >
+                <svg
+                  class="w-12 h-12 mb-3 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+                  ></path>
+                </svg>
+                <p>No tienes contactos guardados.</p>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    </div>
+  </main>
+</div>

@@ -21,6 +21,39 @@
         (ngSubmit)="onSubmit()"
         class="space-y-6"
       >
+        @if (beneficiaries().length > 0) {
+          <div>
+            <label
+              for="agenda"
+              class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              >Seleccionar de tu Agenda</label
+            >
+            <select
+              id="agenda"
+              (change)="onBeneficiarySelect($event)"
+              class="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md dark:bg-gray-700 dark:text-white transition-colors"
+            >
+              <option value="">-- Elige un contacto (Opcional) --</option>
+              @for (contact of beneficiaries(); track contact.id) {
+                <option [value]="contact.iban">{{ contact.name }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="relative flex items-center py-1">
+            <div
+              class="flex-grow border-t border-gray-300 dark:border-gray-700"
+            ></div>
+            <span
+              class="flex-shrink-0 mx-4 text-gray-400 text-xs uppercase tracking-wider"
+              >o escribe un IBAN a mano</span
+            >
+            <div
+              class="flex-grow border-t border-gray-300 dark:border-gray-700"
+            ></div>
+          </div>
+        }
+
         <div>
           <label
             for="targetIban"
