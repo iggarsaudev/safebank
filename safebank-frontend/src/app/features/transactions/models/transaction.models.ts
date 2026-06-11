@@ -12,3 +12,12 @@ export interface Transaction {
   isIncoming: boolean;
   otherIban: string;
 }
+
+export interface PaginatedTransactions {
+  content: Transaction[]; // Aquí viene la lista real de transacciones
+  totalPages: number;
+  totalElements: number;
+  last: boolean;
+  first: boolean;
+  number: number; // Página actual (empieza en 0)
+}

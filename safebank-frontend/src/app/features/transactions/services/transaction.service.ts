@@ -1,7 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Transaction, TransactionRequest } from '../models/transaction.models';
+import {
+  PaginatedTransactions,
+  Transaction,
+  TransactionRequest,
+} from '../models/transaction.models';
 
 @Injectable({
   providedIn: 'root',
@@ -14,7 +18,18 @@ export class TransactionService {
     return this.http.post<{ message: string }>(this.API_URL, request);
   }
 
-  getMyTransactions(): Observable<Transaction[]> {
-    return this.http.get<Transaction[]>(this.API_URL);
+  getMyTransactions(
+    page: number = 0,
+    size: number = 5,
+  ): Observable<PaginatedTransactions> {
+    return this.http.get<PaginatedTransactions>(
+      `${this.API_URL}?page=${page}&size=${size}`,
+    );
+  }
+
+  downloadReceipt(transactionId: number): Observable<Blob> {
+    return this.http.get(`${this.API_URL}/${transactionId}/receipt`, {
+      responseType: 'blob', // CRUCIAL: Le dice a Angular que viene un archivo binario
+    });
   }
 }

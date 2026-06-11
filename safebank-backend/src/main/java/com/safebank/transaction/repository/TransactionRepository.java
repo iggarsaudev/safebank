@@ -1,11 +1,12 @@
 package com.safebank.transaction.domain.repository;
 
 import com.safebank.transaction.domain.Transaction;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import java.util.List;
 
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
     
-    // Buscamos donde seas el origen (envías) O donde seas el destino (recibes)
-    List<Transaction> findBySourceAccountIdOrTargetIbanOrderByTransactionDateDesc(Long sourceAccountId, String targetIban);
+    // Cambiamos List por Page, y añadimos Pageable como último parámetro
+    Page<Transaction> findBySourceAccountIdOrTargetIbanOrderByTransactionDateDesc(Long sourceAccountId, String targetIban, Pageable pageable);
 }

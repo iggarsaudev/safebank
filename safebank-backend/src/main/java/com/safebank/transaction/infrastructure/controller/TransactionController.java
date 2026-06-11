@@ -2,6 +2,7 @@ package com.safebank.transaction.infrastructure.controller;
 
 import com.safebank.auth.domain.User;
 import com.safebank.auth.domain.repository.UserRepository;
+import com.safebank.transaction.application.PdfReceiptService;
 import com.safebank.transaction.application.TransactionService;
 import com.safebank.transaction.application.dto.TransactionRequest;
 import com.safebank.transaction.domain.Transaction;
@@ -10,6 +11,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 
 import java.util.List;
 import java.util.Map;
@@ -22,6 +26,7 @@ public class TransactionController {
 
     private final TransactionService transactionService;
     private final UserRepository userRepository;
+    private final PdfReceiptService pdfReceiptService;
 
     @PostMapping
     public ResponseEntity<Map<String, String>> makeTransfer(@Valid @RequestBody TransactionRequest request, Authentication authentication) {
@@ -37,11 +42,34 @@ public class TransactionController {
     }
 
     @GetMapping
-    public ResponseEntity<List<com.safebank.transaction.application.dto.TransactionHistoryResponse>> getMyTransactions(Authentication authentication) {
+    public ResponseEntity<Page<com.safebank.transaction.application.dto.TransactionHistoryResponse>> getMyTransactions(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size // Enviamos 5 transacciones por página por defecto
+    ) {
         User user = userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new RuntimeException("usuario no encontrado"));
 
-        // devolvemos el historial de transferencias en formato json
-        return ResponseEntity.ok(transactionService.getMyTransactions(user.getId()));
+        return ResponseEntity.ok(transactionService.getMyTransactions(user.getId(), page, size));
+    }
+
+    // Descarga el pdf
+    @GetMapping("/{id}/receipt")
+    public ResponseEntity<byte[]> downloadReceipt(@PathVariable Long id, Authentication authentication) {
+        // 1. Obtenemos el usuario autenticado
+        User user = userRepository.findByEmail(authentication.getName()).orElseThrow();
+        
+        // 2. Obtenemos la transacción validando que sea suya
+        var tx = transactionService.getTransactionReceipt(user.getId(), id);
+        
+        // 3. Generamos el chorro de bytes del PDF
+        byte[] pdfBytes = pdfReceiptService.generateReceipt(tx);
+
+        // 4. Preparamos las cabeceras HTTP para decirle al navegador "¡Cuidado, viene un archivo descargable!"
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("attachment", "justificante-" + tx.id() + ".pdf");
+
+        return ResponseEntity.ok().headers(headers).body(pdfBytes);
     }
 }

@@ -9,6 +9,9 @@ import com.safebank.transaction.domain.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -67,28 +70,27 @@ public class TransactionService {
      * reflejando tanto el dinero saliente (enviado) como el entrante (recibido).
      */
     @Transactional(readOnly = true)
-    public List<TransactionHistoryResponse> getMyTransactions(Long userId) {
-        // 1. Localizamos la cuenta del usuario actual
+    public Page<TransactionHistoryResponse> getMyTransactions(Long userId, int page, int size) {
         Account myAccount = accountRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Cuenta no encontrada"));
 
-        // 2. Buscamos todas las transacciones vinculadas a ti (donde eres el origen O donde eres el destino)
-        List<Transaction> transactions = transactionRepository
-                .findBySourceAccountIdOrTargetIbanOrderByTransactionDateDesc(myAccount.getId(), myAccount.getIban());
+        // Creamos el objeto de paginación (ej: página 0, tamaño 5)
+        Pageable pageable = PageRequest.of(page, size);
 
-        // 3. Mapeamos la entidad de base de datos a un DTO dinámico apto para el consumo de Angular
-        return transactions.stream().map(tx -> {
-            // Comprobamos si el dinero está entrando a nuestra cuenta
+        // Pedimos solo ese "trozo" a la base de datos
+        Page<Transaction> transactionsPage = transactionRepository
+                .findBySourceAccountIdOrTargetIbanOrderByTransactionDateDesc(myAccount.getId(), myAccount.getIban(), pageable);
+
+        // El objeto Page tiene su propio método map que mantiene los metadatos (total de páginas, etc.)
+        return transactionsPage.map(tx -> {
             boolean isIncoming = tx.getTargetIban().equals(myAccount.getIban());
             String otherIban;
 
             if (isIncoming) {
-                // Si me llega dinero, buscamos el IBAN de la persona que lo envió usando su ID interno de cuenta
                 otherIban = accountRepository.findById(tx.getSourceAccountId())
                         .map(Account::getIban)
                         .orElse("Cuenta Externa / Desconocida");
             } else {
-                // Si lo envío yo, el "otro IBAN" es directamente el IBAN de destino al que fue el dinero
                 otherIban = tx.getTargetIban();
             }
 
@@ -100,6 +102,31 @@ public class TransactionService {
                     isIncoming,
                     otherIban
             );
-        }).toList();
+        });
+    }
+
+    /**
+     * Recupera una transacción específica para generar su justificante asegurando que pertenezca al usuario.
+     */
+    @Transactional(readOnly = true)
+    public TransactionHistoryResponse getTransactionReceipt(Long userId, Long transactionId) {
+        Account myAccount = accountRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Cuenta no encontrada"));
+
+        Transaction tx = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new RuntimeException("Transacción no encontrada"));
+
+        // Verificamos que la cuenta del usuario sea la de origen o la de destino
+        if (!tx.getSourceAccountId().equals(myAccount.getId()) && !tx.getTargetIban().equals(myAccount.getIban())) {
+            throw new RuntimeException("No tienes permiso para ver esta transacción");
+        }
+
+        // Mapeamos al DTO
+        boolean isIncoming = tx.getTargetIban().equals(myAccount.getIban());
+        String otherIban = isIncoming
+                ? accountRepository.findById(tx.getSourceAccountId()).map(Account::getIban).orElse("Cuenta Externa")
+                : tx.getTargetIban();
+
+        return new TransactionHistoryResponse(tx.getId(), tx.getConcept(), tx.getAmount(), tx.getTransactionDate(), isIncoming, otherIban);
     }
 }

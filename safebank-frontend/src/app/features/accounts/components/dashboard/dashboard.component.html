@@ -101,21 +101,39 @@
               <li
                 class="p-4 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors flex justify-between items-center"
               >
-                <div>
+                <div class="flex-1">
                   <p
                     class="text-sm font-semibold text-gray-900 dark:text-white"
                   >
                     {{ tx.concept }}
                   </p>
-
                   <p
                     class="text-xs font-mono text-gray-500 dark:text-gray-400 mt-1"
                   >
                     {{ tx.isIncoming ? "De:" : "Para:" }} {{ tx.otherIban }}
                   </p>
-
-                  <p class="text-xs text-gray-400 mt-1">
+                  <p class="text-xs text-gray-400 mt-1 flex items-center gap-3">
                     {{ tx.transactionDate | date: "dd MMM yyyy, HH:mm" }}
+
+                    <button
+                      (click)="downloadReceipt(tx.id)"
+                      class="text-indigo-600 dark:text-indigo-400 hover:underline font-medium flex items-center gap-1 cursor-pointer"
+                    >
+                      <svg
+                        class="w-3.5 h-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                        ></path>
+                      </svg>
+                      Descargar PDF
+                    </button>
                   </p>
                 </div>
 
@@ -154,6 +172,33 @@
               </li>
             }
           </ul>
+          @if (totalPages() > 1) {
+            <div
+              class="px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
+            >
+              <button
+                (click)="changePage(currentPage() - 1)"
+                [disabled]="isFirstPage()"
+                class="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Anterior
+              </button>
+
+              <span class="text-sm text-gray-700 dark:text-gray-400">
+                Página
+                <span class="font-medium">{{ currentPage() + 1 }}</span> de
+                <span class="font-medium">{{ totalPages() }}</span>
+              </span>
+
+              <button
+                (click)="changePage(currentPage() + 1)"
+                [disabled]="isLastPage()"
+                class="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Siguiente
+              </button>
+            </div>
+          }
         }
       </div>
     </div>

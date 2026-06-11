@@ -10,7 +10,7 @@ import { Transaction } from '../../../transactions/models/transaction.models';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink], // RouterLink es vital para el botón
+  imports: [CommonModule, RouterLink],
   templateUrl: './dashboard.component.html',
 })
 export class DashboardComponent implements OnInit {
@@ -25,9 +25,16 @@ export class DashboardComponent implements OnInit {
   transactionsData = signal<Transaction[]>([]);
   isLoadingTransactions = signal<boolean>(true);
 
+  // Señales para la paginación
+  currentPage = signal<number>(0);
+  totalPages = signal<number>(1);
+  isFirstPage = signal<boolean>(true);
+  isLastPage = signal<boolean>(true);
+
   ngOnInit(): void {
     this.loadAccount();
-    this.loadTransactions();
+    // Cargamos la primera página (la 0) al iniciar
+    this.loadTransactions(0);
   }
 
   private loadAccount(): void {
@@ -44,10 +51,20 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  private loadTransactions(): void {
-    this.transactionService.getMyTransactions().subscribe({
+  // Ahora recibe qué página queremos cargar
+  loadTransactions(pageIndex: number): void {
+    this.isLoadingTransactions.set(true);
+    this.transactionService.getMyTransactions(pageIndex).subscribe({
       next: (data) => {
-        this.transactionsData.set(data);
+        // Extraemos el array real de la propiedad 'content'
+        this.transactionsData.set(data.content);
+
+        // Actualizamos las señales de paginación
+        this.currentPage.set(data.number);
+        this.totalPages.set(data.totalPages);
+        this.isFirstPage.set(data.first);
+        this.isLastPage.set(data.last);
+
         this.isLoadingTransactions.set(false);
       },
       error: (error) => {
@@ -57,8 +74,42 @@ export class DashboardComponent implements OnInit {
     });
   }
 
+  // Función para navegar entre páginas
+  changePage(newPageIndex: number): void {
+    if (newPageIndex >= 0 && newPageIndex < this.totalPages()) {
+      this.loadTransactions(newPageIndex);
+    }
+  }
+
+  // Función para salir
   logout(): void {
     this.authService.logout();
     this.router.navigate(['/login']);
+  }
+
+  // Función para descargar pdf
+  downloadReceipt(transactionId: number): void {
+    this.transactionService.downloadReceipt(transactionId).subscribe({
+      next: (blob) => {
+        // 1. Creamos una URL segura local en el navegador apuntando al archivo PDF
+        const url = window.URL.createObjectURL(blob);
+
+        // 2. Creamos un elemento <a> fantasma en el DOM
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `justificante-transferencia-${transactionId}.pdf`; // Nombre del archivo
+
+        // 3. Añadimos el elemento, lo pulsamos y lo destruimos
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        // 4. Liberamos la memoria del navegador
+        window.URL.revokeObjectURL(url);
+      },
+      error: (error) => {
+        console.error('Error al descargar el justificante', error);
+      },
+    });
   }
 }
