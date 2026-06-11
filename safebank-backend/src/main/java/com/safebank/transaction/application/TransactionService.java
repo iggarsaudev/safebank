@@ -26,6 +26,8 @@ public class TransactionService {
     private final TransactionRepository transactionRepository;
     private final AccountRepository accountRepository;
     private final ScheduledTransferRepository scheduledTransferRepository;
+    private final com.safebank.notification.application.EmailService emailService;
+    private final com.safebank.auth.domain.repository.UserRepository userRepository;
 
     /**
      * Realiza una transferencia inmediata o programa una transferencia periódica.
@@ -55,7 +57,7 @@ public class TransactionService {
             return; // Fin del flujo para las programadas
         }
 
-        // --- FLUJO INMEDIATO ESTÁNDAR (El que ya teníamos) ---
+        // FLUJO INMEDIATO ESTÁNDAR
         if (sourceAccount.getBalance().compareTo(request.amount()) < 0) {
             throw new RuntimeException("Saldo insuficiente para realizar la transferencia");
         }
@@ -77,6 +79,16 @@ public class TransactionService {
                 .build();
 
         transactionRepository.save(transaction);
+
+        // Notificación por email al receptor
+        userRepository.findById(targetAccount.getUserId()).ifPresent(targetUser -> {
+            emailService.sendTransferReceivedEmail(targetUser.getEmail(), request.amount(), transaction.getConcept());
+        });
+
+        // Notificación por email al emisor
+        userRepository.findById(sourceUserId).ifPresent(sourceUser -> {
+            emailService.sendTransferSentEmail(sourceUser.getEmail(), request.amount(), request.targetIban(), transaction.getConcept());
+        });
     }
 
     /**
@@ -112,6 +124,16 @@ public class TransactionService {
         st.setNextExecutionDate(st.getNextExecutionDate().plusMonths(1));
         scheduledTransferRepository.save(st);
         System.out.println("Pago recurrente #" + st.getId() + " ejecutado con éxito. Próxima fecha: " + st.getNextExecutionDate());
+
+        // Notificación por email al receptor
+        userRepository.findById(targetAccount.getUserId()).ifPresent(targetUser -> {
+            emailService.sendTransferReceivedEmail(targetUser.getEmail(), st.getAmount(), "[Automático] " + st.getConcept());
+        });
+
+        // Notificación por email al emisor
+        userRepository.findById(st.getSourceUserId()).ifPresent(sourceUser -> {
+            emailService.sendScheduledPaymentExecutedEmail(sourceUser.getEmail(), st.getAmount(), st.getConcept());
+        });
     }
 
     /**
