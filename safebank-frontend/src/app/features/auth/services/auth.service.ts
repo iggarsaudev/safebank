@@ -6,6 +6,7 @@ import {
   LoginRequest,
   RegisterRequest,
 } from '../models/auth.models';
+import { environment } from '../../../../environments/environment';
 
 @Injectable({
   providedIn: 'root',
@@ -14,8 +15,7 @@ export class AuthService {
   // usamos la nueva función inject() de angular en lugar del constructor tradicional
   private readonly http = inject(HttpClient);
 
-  // url base de nuestro controlador en spring boot
-  private readonly API_URL = 'http://localhost:8080/api/v1/auth';
+  private readonly API_URL = `${environment.apiUrl}/auth`;
 
   login(request: LoginRequest): Observable<AuthResponse> {
     // enviamos un post al endpoint de login

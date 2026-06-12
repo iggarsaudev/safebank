@@ -6,13 +6,14 @@ import {
   Transaction,
   TransactionRequest,
 } from '../models/transaction.models';
+import { environment } from '../../../../environments/environment';
 
 @Injectable({
   providedIn: 'root',
 })
 export class TransactionService {
   private readonly http = inject(HttpClient);
-  private readonly API_URL = 'http://localhost:8080/api/v1/transactions';
+  private readonly API_URL = `${environment.apiUrl}/transactions`;
 
   makeTransfer(request: TransactionRequest): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(this.API_URL, request);

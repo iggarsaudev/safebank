@@ -2,13 +2,14 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Beneficiary, BeneficiaryRequest } from '../models/beneficiary.models';
+import { environment } from '../../../../environments/environment';
 
 @Injectable({
   providedIn: 'root',
 })
 export class BeneficiaryService {
   private readonly http = inject(HttpClient);
-  private readonly API_URL = 'http://localhost:8080/api/v1/beneficiaries';
+  private readonly API_URL = `${environment.apiUrl}/beneficiaries`;
 
   getMyBeneficiaries(): Observable<Beneficiary[]> {
     return this.http.get<Beneficiary[]>(this.API_URL);
