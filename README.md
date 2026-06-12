@@ -14,7 +14,8 @@ SafeBank es una aplicación bancaria moderna y segura desarrollada como proyecto
 ## ✨ Características Principales
 
 * **🔒 Seguridad Robusta:** Autenticación basada en **JWT (JSON Web Tokens)** y contraseñas encriptadas con BCrypt.
-* **🛡️ Doble Factor (OTP):** Las transferencias superiores a 1.000€ requieren validación adicional mediante un código enviado por correo electrónico.
+* **🛡️ Doble Factor (OTP):** Las transferencias superiores a 1.000€ requieren validación adicional. 
+  * *Nota de despliegue:* Debido a las restricciones de puertos SMTP en el tier gratuito de Render, el envío real de emails está simulado en los logs. Para evaluar la plataforma en Producción, se ha habilitado el código maestro de bypass `123456`.
 * **📊 Dashboard Interactivo:** Visualización de ingresos y gastos en tiempo real mediante un gráfico de anillo renderizado con **Chart.js**.
 * **💸 Transferencias Avanzadas:** * Envíos inmediatos entre cuentas.
   * Transferencias programadas (mensuales) ejecutadas automáticamente mediante **Spring Boot @Scheduled (Cron Jobs)**.
