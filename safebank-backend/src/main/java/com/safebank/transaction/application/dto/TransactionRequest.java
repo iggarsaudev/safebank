@@ -21,5 +21,9 @@ public record TransactionRequest(
         String concept,
 
         // Si viene nulo desde Angular, asumimos que es IMMEDIATE
-        TransferFrequency frequency
+        TransferFrequency frequency,
+
+        // Código de verificación en dos pasos (Opcional)
+        @Size(min = 6, max = 6, message = "El código OTP debe tener 6 dígitos")
+        String otpCode
 ) {}

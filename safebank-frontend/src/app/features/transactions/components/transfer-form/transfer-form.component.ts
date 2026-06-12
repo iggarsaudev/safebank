@@ -1,6 +1,11 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  FormBuilder,
+  ReactiveFormsModule,
+  Validators,
+  FormControl,
+} from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { TransactionService } from '../../services/transaction.service';
 import { ToastService } from '../../../../core/services/toast.service';
@@ -20,28 +25,31 @@ export class TransferFormComponent implements OnInit {
   private readonly toastService = inject(ToastService);
   private readonly router = inject(Router);
 
-  // Señal para la agenda
   beneficiaries = signal<Beneficiary[]>([]);
 
-  // Formulario reactivo
   transferForm = this.fb.group({
     targetIban: ['', [Validators.required, Validators.minLength(15)]],
     amount: ['', [Validators.required, Validators.min(0.01)]],
     concept: [''],
-    frequency: ['IMMEDIATE'], // Controlamos si es inmediata o mensual
+    frequency: ['IMMEDIATE'],
   });
 
   isSubmitting = false;
 
+  // NUEVAS VARIABLES PARA EL DOBLE FACTOR (OTP)
+  showOtpModal = signal<boolean>(false);
+  otpControl = new FormControl('', [
+    Validators.required,
+    Validators.pattern('^[0-9]{6}$'),
+  ]);
+
   ngOnInit(): void {
-    // Cargamos los contactos al iniciar
     this.beneficiaryService.getMyBeneficiaries().subscribe({
       next: (data) => this.beneficiaries.set(data),
       error: (err) => console.error('No se pudo cargar la agenda', err),
     });
   }
 
-  // Autocompletado del IBAN
   onBeneficiarySelect(event: Event): void {
     const selectElement = event.target as HTMLSelectElement;
     const selectedIban = selectElement.value;
@@ -52,28 +60,77 @@ export class TransferFormComponent implements OnInit {
     }
   }
 
-  // Envío del formulario
+  // 1. Interceptamos el envío del formulario principal
   onSubmit(): void {
     if (this.transferForm.invalid) {
       this.transferForm.markAllAsTouched();
       return;
     }
 
-    this.isSubmitting = true;
+    const amount = Number(this.transferForm.value.amount);
 
-    this.transactionService
-      .makeTransfer(this.transferForm.value as any)
-      .subscribe({
+    // Si es 1000€ o más, disparamos el flujo de alta seguridad
+    if (amount >= 1000) {
+      this.isSubmitting = true;
+      this.transactionService.requestOtp().subscribe({
         next: (res) => {
-          this.toastService.show(res.message, 'success');
-          this.router.navigate(['/dashboard']);
+          this.toastService.show(res.message, 'success'); // Avisamos que el email salió
+          this.showOtpModal.set(true); // Abrimos el modal
+          this.isSubmitting = false;
         },
         error: (err) => {
-          const errorMessage =
-            err.error?.message || 'Error al procesar la transferencia';
-          this.toastService.show(errorMessage, 'error');
+          this.toastService.show(
+            'Error al solicitar el código de seguridad',
+            'error',
+          );
           this.isSubmitting = false;
         },
       });
+      return; // Detenemos la ejecución aquí, esperando a que ponga el código en el Modal
+    }
+
+    // Si es menos de 1000€, ejecutamos normalmente sin código OTP
+    this.executeFinalTransfer();
+  }
+
+  // 2. Método que llama el Modal cuando el usuario mete los 6 dígitos
+  submitOtp(): void {
+    if (this.otpControl.invalid) {
+      this.otpControl.markAsTouched();
+      return;
+    }
+    // Ejecutamos la transferencia pasando el código OTP
+    this.executeFinalTransfer(this.otpControl.value!);
+  }
+
+  // 3. Cierra el modal si se arrepiente
+  cancelOtp(): void {
+    this.showOtpModal.set(false);
+    this.otpControl.reset();
+  }
+
+  // 4. El motor real que hace la petición a Java
+  private executeFinalTransfer(otpCode?: string): void {
+    this.isSubmitting = true;
+
+    // Unimos los datos del formulario con el código OTP (si existe)
+    const finalRequest = {
+      ...this.transferForm.value,
+      otpCode: otpCode,
+    };
+
+    this.transactionService.makeTransfer(finalRequest as any).subscribe({
+      next: (res) => {
+        this.toastService.show('Transferencia realizada con éxito', 'success');
+        this.showOtpModal.set(false);
+        this.router.navigate(['/dashboard']);
+      },
+      error: (err) => {
+        const errorMessage =
+          err.error?.message || 'Error al procesar la transferencia';
+        this.toastService.show(errorMessage, 'error');
+        this.isSubmitting = false;
+      },
+    });
   }
 }

@@ -42,4 +42,9 @@ export class TransactionService {
       `${this.API_URL}/scheduled/${id}`,
     );
   }
+
+  // Pide al backend que genere y envíe el código OTP por email
+  requestOtp(): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.API_URL}/otp`, {});
+  }
 }

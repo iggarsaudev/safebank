@@ -16,6 +16,7 @@ import com.safebank.transaction.domain.ScheduledTransfer;
 import com.safebank.transaction.domain.TransferFrequency;
 import com.safebank.transaction.domain.repository.ScheduledTransferRepository;
 import java.time.LocalDate;
+import java.math.BigDecimal;
 
 import java.util.List;
 
@@ -28,6 +29,9 @@ public class TransactionService {
     private final ScheduledTransferRepository scheduledTransferRepository;
     private final com.safebank.notification.application.EmailService emailService;
     private final com.safebank.auth.domain.repository.UserRepository userRepository;
+    
+    // Añade el guardia de seguridad
+    private final com.safebank.auth.application.OtpService otpService;
 
     /**
      * Realiza una transferencia inmediata o programa una transferencia periódica.
@@ -39,6 +43,25 @@ public class TransactionService {
 
         if (sourceAccount.getIban().equals(request.targetIban())) {
             throw new RuntimeException("No puedes enviarte dinero a tu propia cuenta");
+        }
+
+        // Seguridad OTP
+        BigDecimal otpThreshold = new BigDecimal("1000.00");
+
+        // Si el importe es mayor o igual a 1.000€...
+        if (request.amount().compareTo(otpThreshold) >= 0) {
+            // 1. Comprobamos si nos han mandado el código
+            if (request.otpCode() == null || request.otpCode().isBlank()) {
+                throw new RuntimeException("Se requiere código de seguridad OTP para operaciones superiores a 1.000€");
+            }
+            
+            // 2. Comprobamos si el código es correcto y no ha caducado
+            if (!otpService.isOtpValid(sourceUserId, request.otpCode())) {
+                throw new RuntimeException("El código de seguridad es incorrecto o ha caducado");
+            }
+            
+            // 3. Si es correcto, lo quemamos para que un hacker no pueda reutilizarlo 5 segundos después
+            otpService.markOtpAsUsed(sourceUserId);
         }
 
         // Si la frecuencia es MONTHLY, guardamos la orden en vez de mover el dinero ya

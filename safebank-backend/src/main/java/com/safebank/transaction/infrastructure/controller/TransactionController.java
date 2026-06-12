@@ -27,6 +27,7 @@ public class TransactionController {
     private final TransactionService transactionService;
     private final UserRepository userRepository;
     private final PdfReceiptService pdfReceiptService;
+    private final com.safebank.auth.application.OtpService otpService;
 
     @PostMapping
     public ResponseEntity<Map<String, String>> makeTransfer(@Valid @RequestBody TransactionRequest request, Authentication authentication) {
@@ -84,5 +85,15 @@ public class TransactionController {
         User user = userRepository.findByEmail(authentication.getName()).orElseThrow();
         transactionService.cancelScheduledTransfer(user.getId(), id);
         return ResponseEntity.ok(Map.of("message", "Pago programado cancelado correctamente"));
+    }
+
+    @PostMapping("/otp")
+    public ResponseEntity<Map<String, String>> requestOtp(Authentication authentication) {
+        User user = userRepository.findByEmail(authentication.getName()).orElseThrow();
+
+        // Llamamos al motor que genera la clave y envía el correo
+        otpService.generateAndSendOtp(user.getId());
+
+        return ResponseEntity.ok(Map.of("message", "Código de seguridad enviado a tu correo electrónico"));
     }
 }

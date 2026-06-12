@@ -75,4 +75,23 @@ public class EmailService {
             System.err.println("❌ Error al enviar el email de envío: " + e.getMessage());
         }
     }
+
+    @Async
+    public void sendOtpEmail(String toEmail, String otpCode) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(toEmail);
+        message.setSubject("Código de Seguridad OTP - SafeBank");
+        message.setText("Hola,\n\n" +
+                "Tu código de seguridad para autorizar la operación es: " + otpCode + "\n\n" +
+                "Este código caducará en 5 minutos.\n" +
+                "Si no has intentado realizar ninguna transferencia, ponte en contacto con nosotros urgentemente.\n\n" +
+                "El equipo de SafeBank.");
+        
+        try {
+            mailSender.send(message);
+            System.out.println("🔐 Email OTP (Doble Factor) enviado a: " + toEmail);
+        } catch (Exception e) {
+            System.err.println("❌ Error al enviar el email OTP: " + e.getMessage());
+        }
+    }
 }
