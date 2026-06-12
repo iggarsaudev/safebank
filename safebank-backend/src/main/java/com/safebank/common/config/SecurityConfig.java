@@ -47,10 +47,19 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:4200")); // Permitimos Angular
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")); // Permitimos la petición fantasma (OPTIONS)
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type")); // Permitimos que viaje nuestro Token
         
+        // Leemos la URL permitida desde las variables de entorno (por defecto dejamos el localhost)
+        String allowedOrigin = System.getenv("ALLOWED_ORIGINS");
+        if (allowedOrigin == null || allowedOrigin.isEmpty()) {
+            allowedOrigin = "http://localhost:4200";
+        }
+        
+        // Permitimos la URL de Vercel (Producción) y la de Localhost
+        configuration.setAllowedOrigins(List.of("http://localhost:4200", allowedOrigin));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        configuration.setAllowCredentials(true);
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

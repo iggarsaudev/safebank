@@ -1,27 +1,33 @@
 spring:
-  profiles:
-    active: local
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/safebank_db}
-    username: ${DB_USER:postgres}
-    password: ${DB_PASSWORD:postgres}
+    # Si existe la variable DB_URL en el servidor, la usa. Si no, usa tu base de datos de Neon localmente.
+    url: ${DB_URL:jdbc:postgresql://ep-autumn-darkness-a26d0dvq-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require}
+    username: ${DB_USERNAME:neondb_owner}
+    password: ${DB_PASSWORD:npg_7TkfHD8unImU}
+
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false # Lo apagamos en producción para no saturar los logs
     properties:
       hibernate:
         format_sql: true
 
-  # Configuración email
   mail:
     host: smtp.gmail.com
     port: 587
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
+    # Aquí NO ponemos tu correo real. En local fallará el email, pero en Producción funcionará.
+    username: ${MAIL_USERNAME:tu_correo_local@gmail.com}
+    password: ${MAIL_PASSWORD:tu_password_local}
     properties:
       mail:
         smtp:
           auth: true
           starttls:
             enable: true
+
+# Configuración de nuestro JWT (Token)
+jwt:
+  # Clave secreta larga generada aleatoriamente. En producción usaremos otra más segura por variable.
+  secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+  expiration: 86400000 # 1 día
