@@ -80,6 +80,12 @@ public class TransactionController {
         return ResponseEntity.ok(transactionService.getMyScheduledTransfers(user.getId()));
     }
 
+    @GetMapping("/statistics")
+    public ResponseEntity<com.safebank.transaction.application.dto.StatisticsResponse> getMyStatistics(Authentication authentication) {
+        User user = userRepository.findByEmail(authentication.getName()).orElseThrow();
+        return ResponseEntity.ok(transactionService.getMyStatistics(user.getId()));
+    }
+
     @DeleteMapping("/scheduled/{id}")
     public ResponseEntity<Map<String, String>> cancelScheduledTransfer(@PathVariable Long id, Authentication authentication) {
         User user = userRepository.findByEmail(authentication.getName()).orElseThrow();

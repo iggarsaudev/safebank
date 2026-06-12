@@ -47,4 +47,11 @@ export class TransactionService {
   requestOtp(): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${this.API_URL}/otp`, {});
   }
+
+  // Obtiene el sumatorio de ingresos y gastos para la gráfica
+  getMyStatistics(): Observable<{ totalIncome: number; totalExpense: number }> {
+    return this.http.get<{ totalIncome: number; totalExpense: number }>(
+      `${this.API_URL}/statistics`,
+    );
+  }
 }

@@ -7,6 +7,10 @@ import { AuthService } from '../../../auth/services/auth.service';
 import { TransactionService } from '../../../transactions/services/transaction.service';
 import { Transaction } from '../../../transactions/models/transaction.models';
 import { ToastService } from '../../../../core/services/toast.service';
+import { Chart, registerables } from 'chart.js';
+
+// Registramos los componentes de Chart.js para que Angular los pueda usar
+Chart.register(...registerables);
 
 @Component({
   selector: 'app-dashboard',
@@ -30,6 +34,12 @@ export class DashboardComponent implements OnInit {
   // SEÑAL PARA PAGOS PROGRAMADOS
   scheduledTransfers = signal<any[]>([]);
 
+  // VARIABLES PARA ESTADÍSTICAS Y GRÁFICOS
+  statisticsData = signal<{ totalIncome: number; totalExpense: number } | null>(
+    null,
+  );
+  chart: any = null;
+
   currentPage = signal<number>(0);
   totalPages = signal<number>(1);
   isFirstPage = signal<boolean>(true);
@@ -40,6 +50,7 @@ export class DashboardComponent implements OnInit {
     this.loadAccount();
     this.loadTransactions(0);
     this.loadScheduledTransfers();
+    this.loadStatistics();
   }
 
   private loadAccount(): void {
@@ -78,7 +89,54 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  // Abre el modal guardando el ID
+  // Carga los sumatorios desde el backend y pinta el gráfico
+  loadStatistics(): void {
+    this.transactionService.getMyStatistics().subscribe({
+      next: (data) => {
+        this.statisticsData.set(data);
+        // Damos un pequeño respiro de 100ms a Angular para que pinte el <canvas> en el HTML antes de buscarlo
+        setTimeout(() => this.renderChart(data), 100);
+      },
+      error: (err) => console.error('Error cargando estadísticas', err),
+    });
+  }
+
+  // Lógica pura de Chart.js
+  renderChart(data: { totalIncome: number; totalExpense: number }): void {
+    const canvas = document.getElementById('statsChart') as HTMLCanvasElement;
+    if (!canvas) return;
+
+    // Si ya existía un gráfico previo (al recargar componente), lo destruimos para no superponerlos
+    if (this.chart) {
+      this.chart.destroy();
+    }
+
+    this.chart = new Chart(canvas, {
+      type: 'doughnut',
+      data: {
+        labels: ['Ingresos', 'Gastos'],
+        datasets: [
+          {
+            data: [data.totalIncome, data.totalExpense],
+            backgroundColor: ['#10B981', '#EF4444'], // Verde Esmeralda y Rojo
+            hoverBackgroundColor: ['#059669', '#DC2626'],
+            borderWidth: 0,
+            hoverOffset: 4,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '75%', // Hace que el anillo sea más fino
+        plugins: {
+          legend: { position: 'bottom' },
+        },
+      },
+    });
+  }
+
+  // Abre el modal de confirmación de borrado
   confirmCancel(id: number): void {
     this.transferToDelete.set(id);
   }
@@ -96,8 +154,8 @@ export class DashboardComponent implements OnInit {
           res.message || 'Pago cancelado correctamente',
           'success',
         );
-        this.transferToDelete.set(null); // Cerramos el modal
-        this.loadScheduledTransfers(); // Recargamos la lista
+        this.transferToDelete.set(null);
+        this.loadScheduledTransfers();
       },
       error: (err) => {
         const errorMessage = err.error?.message || 'Error al cancelar el pago';

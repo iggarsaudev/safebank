@@ -17,6 +17,7 @@ import com.safebank.transaction.domain.TransferFrequency;
 import com.safebank.transaction.domain.repository.ScheduledTransferRepository;
 import java.time.LocalDate;
 import java.math.BigDecimal;
+import com.safebank.transaction.application.dto.StatisticsResponse;
 
 import java.util.List;
 
@@ -247,5 +248,19 @@ public class TransactionService {
 
         // Lo eliminamos físicamente de la base de datos
         scheduledTransferRepository.delete(st);
+    }
+
+    /**
+     * Devuelve el sumatorio total de ingresos y gastos del usuario para las gráficas.
+     */
+    @Transactional(readOnly = true)
+    public StatisticsResponse getMyStatistics(Long userId) {
+        Account myAccount = accountRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Cuenta no encontrada"));
+
+        java.math.BigDecimal income = transactionRepository.sumTotalIncome(myAccount.getIban());
+        java.math.BigDecimal expense = transactionRepository.sumTotalExpense(myAccount.getId());
+
+        return new StatisticsResponse(income, expense);
     }
 }
