@@ -1,6 +1,8 @@
 package com.safebank.notification.application;
 
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
@@ -12,11 +14,9 @@ import java.math.BigDecimal;
 @RequiredArgsConstructor
 public class EmailService {
 
-    // Esta es la herramienta de Spring Boot que hace la magia de conectarse a Google
+    private static final Logger logger = LoggerFactory.getLogger(EmailService.class);
     private final JavaMailSender mailSender;
 
-    // Usamos @Async para que el envío del email se haga en segundo plano 
-    // y no retrase la transferencia del usuario
     @Async
     public void sendTransferReceivedEmail(String toEmail, BigDecimal amount, String concept) {
         SimpleMailMessage message = new SimpleMailMessage();
@@ -30,9 +30,9 @@ public class EmailService {
         
         try {
             mailSender.send(message);
-            System.out.println("💌 Email de INGRESO enviado con éxito a: " + toEmail);
+            logger.info("✅ Email de INGRESO enviado con éxito a: {}", toEmail);
         } catch (Exception e) {
-            System.err.println("❌ Error al enviar el email: " + e.getMessage());
+            simulateEmailOutput(toEmail, message.getSubject(), message.getText());
         }
     }
 
@@ -49,9 +49,9 @@ public class EmailService {
         
         try {
             mailSender.send(message);
-            System.out.println("💌 Email de PAGO PROGRAMADO enviado con éxito a: " + toEmail);
+            logger.info("✅ Email de PAGO PROGRAMADO enviado con éxito a: {}", toEmail);
         } catch (Exception e) {
-            System.err.println("❌ Error al enviar el email: " + e.getMessage());
+            simulateEmailOutput(toEmail, message.getSubject(), message.getText());
         }
     }
 
@@ -70,9 +70,9 @@ public class EmailService {
         
         try {
             mailSender.send(message);
-            System.out.println("💌 Email de CONFIRMACIÓN DE ENVÍO enviado con éxito a: " + toEmail);
+            logger.info("✅ Email de CONFIRMACIÓN DE ENVÍO enviado con éxito a: {}", toEmail);
         } catch (Exception e) {
-            System.err.println("❌ Error al enviar el email de envío: " + e.getMessage());
+            simulateEmailOutput(toEmail, message.getSubject(), message.getText());
         }
     }
 
@@ -89,9 +89,20 @@ public class EmailService {
         
         try {
             mailSender.send(message);
-            System.out.println("🔐 Email OTP (Doble Factor) enviado a: " + toEmail);
+            logger.info("🔐 Email OTP (Doble Factor) enviado a: {}", toEmail);
         } catch (Exception e) {
-            System.err.println("❌ Error al enviar el email OTP: " + e.getMessage());
+            simulateEmailOutput(toEmail, message.getSubject(), message.getText());
         }
+    }
+
+    // Método auxiliar para simular el envío en la consola de Render
+    private void simulateEmailOutput(String to, String subject, String text) {
+        logger.warn("⚠️ Error SMTP atrapado (Timeout). Modo simulación activado.");
+        logger.info("\n==================================================");
+        logger.info("📩 [MODO PORTFOLIO - EMAIL SIMULADO]");
+        logger.info("Para: {}", to);
+        logger.info("Asunto: {}", subject);
+        logger.info("Contenido:\n{}", text);
+        logger.info("==================================================\n");
     }
 }
